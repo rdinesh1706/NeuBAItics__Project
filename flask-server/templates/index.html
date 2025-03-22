@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Submission</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: grey;
+        }
+
+        .centered-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .name {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .textbox {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+            margin-bottom: 10px;
+            width: 300px;
+        }
+
+        .submit-button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+        }
+
+        .submit-button:hover {
+            background-color: #3e8e41;
+        }
+
+        #sentimentResult {
+            margin-top: 10px;
+        }
+
+        .positive {
+            color: green;
+        }
+
+        .neutral {
+            color: yellow;
+        }
+
+        .negative {
+            color: red;
+        }
+
+        #chartContainer {
+            margin-top: 20px;
+            width: 600px; /* Adjust as needed */
+            height: 400px; /* Adjust as needed */
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="centered-container">
+        <div class="name">
+            Review Submission
+        </div>
+        <input type="text" class="textbox" id="userId" placeholder="Enter User ID">
+        <input type="text" class="textbox" id="reviewText" placeholder="Enter your review here...">
+        <button class="submit-button" id="submitButton">Submit Review</button>
+        <div id="sentimentResult"></div>
+        <button id="visualizeButton">Data Visualization</button>
+        <canvas id="chartContainer"></canvas>
+    </div>
+    <script>
+        let chart; // Declare chart globally
+
+        document.getElementById('submitButton').addEventListener('click', function() {
+            const userId = document.getElementById('userId').value;
+            const reviewText = document.getElementById('reviewText').value;
+
+            if (userId.trim() === '' || reviewText.trim() === '') {
+                alert('Please enter both User ID and Review.');
+                return;
+            }
+
+            fetch('/reviews', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    review_text: reviewText,
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                let sentimentClass = '';
+                if (data.sentiment === 'Positive') {
+                    sentimentClass = 'positive';
+                } else if (data.sentiment === 'Neutral') {
+                    sentimentClass = 'neutral';
+                } else if (data.sentiment === 'Negative') {
+                    sentimentClass = 'negative';
+                }
+
+                document.getElementById('sentimentResult').innerHTML = `<span class="${sentimentClass}">Sentiment: ${data.sentiment}, Confidence: ${data.confidence}</span>`;
+                alert('Review submitted successfully!');
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                alert('Failed to submit review.');
+            });
+        });
+
+        document.getElementById('visualizeButton').addEventListener('click', function() {
+            fetch('/visualize')
+                .then(response => response.json())
+                .then(data => {
+                    const timestamps = data.timestamps;
+                    const confidenceValues = data.confidenceValues;
+
+                    if (chart) {
+                        chart.destroy();
+                    }
+
+                    const ctx = document.getElementById('chartContainer').getContext('2d');
+                    chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: timestamps,
+                            datasets: [{
+                                label: 'Confidence Over Time',
+                                data: confidenceValues,
+                                borderColor: 'blue',
+                                fill: false
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Timestamp'
+                                    }
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: 'Confidence Value'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching visualization data:', error);
+                    alert('Failed to fetch visualization data.');
+                });
+        });
+    </script>
+</body>
+</html>
